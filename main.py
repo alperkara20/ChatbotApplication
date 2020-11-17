@@ -1,3 +1,4 @@
+#this is a comment by firatbkoc
 import nltk
 from nltk.stem.lancaster import LancasterStemmer
 stemmer = LancasterStemmer()
