@@ -1,8 +1,8 @@
 import nltk 
-from nltk.stem.lancaster import LancasterStemmer
-nltk.download('punkt')
-
-stemmer = LancasterStemmer()
+# from nltk.stem.lancaster import LancasterStemmer
+# nltk.download('punkt')
+import time 
+# stemmer = LancasterStemmer()
 
 import numpy 
 import tflearn 
@@ -12,16 +12,22 @@ from tensorflow.python.framework import ops
 import random 
 import json 
 import pickle
+from snowballstemmer import TurkishStemmer
+turkStem = TurkishStemmer()
 
+# with open('my_intents2.json') as file:
+#     data = json.load(file)
+#     print("merhabaaaaaaaaa")
 
-
-with open('intents.json') as file:
-    data = json.load(file)
+with open('intents_.json') as file:
+        data = json.load(file)
+        print("merhabaaaaaaaaa")
 
 try: 
     with open("data.pickle", "rb") as f:
         words, labels, training, output = pickle.load(f)
 except: 
+    print('saaaaa')
     words = []
     labels = []
     docs_x = []
@@ -30,53 +36,18 @@ except:
     for intent in data["intents"]:
         for pattern in intent["patterns"]:
             wrds = nltk.word_tokenize(pattern)
-            words.extend(wrds)
+            
+            words.extend(wrds) #iki diziyi birleştirir.
             docs_x.append(wrds)
             docs_y.append(intent["tag"])
-
-           
-           
-******************************************************************
-def bag_of_words(s, words):
-    bag = [0 for _ in range(len(words))]
-
-    s_words = nltk.word_tokenize(s)
-    s_words = [stemmer.stem(word.lower()) for word in s_words]
-
-    for se in s_words:
-        for i, w in enumerate(words):
-            if w == se:
-                bag[i] = 1
             
-    return numpy.array(bag)
-
-
-def chat():
-    print("Start talking with the bot (type quit to stop)!")
-    while True:
-        inp = input("You: ")
-        if inp.lower() == "quit":
-            break
-
-        results = model.predict([bag_of_words(inp, words)])
-        results_index = numpy.argmax(results)
-        tag = labels[results_index]
-
-        for tg in data["intents"]:
-            if tg['tag'] == tag:
-                responses = tg['responses']
-
-        print(random.choice(responses))
-
-chat()
-
         if intent["tag"] not in labels:
             labels.append(intent["tag"])     
-    words = [stemmer.stem(w.lower()) for w in words if w != "?"]
+            
+    words = [turkStem.stemWord(w.lower()) for w in words if w != "?"] # tüm pattern'ın içerisindeki kelimeleri parçalayıp attık.
     words = sorted(list(set(words)))
     
     labels = sorted(labels)
-    
     training = []
     output = []
 
@@ -84,28 +55,29 @@ chat()
 
 
 # until 2-part
-    for x, doc in enumerate(docs_x):
-        bag = []
+for x, doc in enumerate(docs_x):
+    bag = []
 
-        wrds = [stemmer.stem(w.lower()) for w in doc]
-
-        for w in words:
-            if w in wrds:
-                bag.append(1)
-            else:
-                bag.append(0)
-
-        output_row = out_empty[:]
-        output_row[labels.index(docs_y[x])] = 1
-
-        training.append(bag)
-        output.append(output_row)
-
-    training = numpy.array(training)
-    output = numpy.array(output)
+    wrds = [turkStem.stemWord(w.lower()) for w in doc]
     
-    with open("data.pickle","wb") as f:
-        pickle.dump((words, labels, training, output), f)
+    for w in words:
+        if w in wrds:
+            bag.append(1)
+        else:
+            bag.append(0)
+
+    output_row = out_empty[:]
+    output_row[labels.index(docs_y[x])] = 1
+    
+    training.append(bag)
+    output.append(output_row)
+    
+
+training = numpy.array(training)
+output = numpy.array(output)
+
+# with open("data.pickle","wb") as f:
+#     pickle.dump((words, labels, training, output), f)
 
 # 3-part
 ops.reset_default_graph()
@@ -121,6 +93,6 @@ model = tflearn.DNN(net)
 
 
 # model.load("model.tflearn")
-
-model.fit(training, output, n_epoch=1000, batch_size=8, show_metric=True)
+#batch_size : girdilerin sayısı
+model.fit(training, output, n_epoch=1000, batch_size=90, show_metric=True)
 model.save("model.tflearn")
